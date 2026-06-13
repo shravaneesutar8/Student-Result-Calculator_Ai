@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Marksheet — Result Calculator</title>
+<style>
+  :root{
+    --paper:#f6f1e7;
+    --paper-line:#dcd3c2;
+    --ink:#1f2a37;
+    --ink-soft:#5b6675;
+    --rule:#b9402a;
+    --gold:#b08d2c;
+    --pass:#1f6f4a;
+    --fail:#b9402a;
+    --card:#ffffff;
+  }
+
+  *{ box-sizing:border-box; }
+
+  body{
+    margin:0;
+    min-height:100vh;
+    font-family:'Courier New', Courier, monospace;
+    background:
+      repeating-linear-gradient(
+        to bottom,
+        transparent 0px, transparent 38px,
+        var(--paper-line) 38px, var(--paper-line) 39px
+      ),
+      var(--paper);
+    color:var(--ink);
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    padding:40px 16px;
+  }
+
+  .sheet{
+    width:100%;
+    max-width:620px;
+    background:var(--card);
+    border:1px solid var(--paper-line);
+    box-shadow: 0 2px 0 var(--paper-line), 0 18px 40px -20px rgba(31,42,55,0.35);
+    position:relative;
+  }
+
+  /* punch holes */
+  .sheet::before, .sheet::after{
+    content:"";
+    position:absolute;
+    width:14px; height:14px;
+    border-radius:50%;
+    background:var(--paper);
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.25);
+    top:28px;
+  }
+  .sheet::before{ left:24px; }
+  .sheet::after{ right:24px; }
+
+  header{
+    text-align:center;
+    padding:36px 28px 22px;
+    border-bottom:3px double var(--ink);
+  }
+
+  .eyebrow{
+    font-family:'Georgia', serif;
+    letter-spacing:0.3em;
+    font-size:0.7rem;
+    color:var(--gold);
+    text-transform:uppercase;
+    margin:0 0 10px;
+  }
+
+  h1{
+    font-family:'Georgia', 'Times New Roman', serif;
+    font-size:clamp(1.6rem, 5vw, 2.4rem);
+    margin:0;
+    letter-spacing:0.04em;
+    color:var(--ink);
+  }
+
+  .sub{
+    margin:8px 0 0;
+    font-size:0.78rem;
+    color:var(--ink-soft);
+  }
+
+  form{
+    padding:28px;
+  }
+
+  .row{
+    display:grid;
+    grid-template-columns: 28px 1fr 96px;
+    align-items:center;
+    gap:14px;
+    padding:10px 0;
+    border-bottom:1px dashed var(--paper-line);
+  }
+  .row:last-of-type{ border-bottom:none; }
+
+  .row .no{
+    font-family:'Georgia', serif;
+    color:var(--gold);
+    font-weight:bold;
+    text-align:center;
+  }
+
+  .row label{
+    font-size:0.92rem;
+    letter-spacing:0.02em;
+  }
+
+  .row input{
+    width:100%;
+    padding:8px 10px;
+    font-family:'Courier New', Courier, monospace;
+    font-size:1rem;
+    text-align:center;
+    border:1px solid var(--paper-line);
+    border-radius:2px;
+    background:var(--paper);
+    color:var(--ink);
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .row input:focus{
+    outline:none;
+    border-color:var(--rule);
+    box-shadow:0 0 0 3px rgba(185,64,42,0.12);
+  }
+  .row input.invalid{
+    border-color:var(--fail);
+    background:#fdecec;
+  }
+
+  .error-msg{
+    font-size:0.75rem;
+    color:var(--fail);
+    margin:6px 0 0;
+    min-height:1.1em;
+  }
+
+  .actions{
+    margin-top:24px;
+    text-align:center;
+  }
+
+  button{
+    font-family:'Georgia', serif;
+    font-size:1rem;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    padding:12px 36px;
+    border:2px solid var(--ink);
+    background:var(--ink);
+    color:var(--paper);
+    border-radius:2px;
+    cursor:pointer;
+    transition: transform 0.15s ease, background 0.2s, color 0.2s;
+  }
+  button:hover{
+    background:var(--paper);
+    color:var(--ink);
+  }
+  button:active{
+    transform: scale(0.97);
+  }
+
+  /* Result panel */
+  #result{
+    margin:0 28px 32px;
+    border-top:3px double var(--ink);
+    padding-top:22px;
+    display:none;
+  }
+  #result.show{ display:block; }
+
+  .summary-grid{
+    display:grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap:14px;
+    margin-bottom:20px;
+  }
+  @media (min-width: 480px){
+    .summary-grid{ grid-template-columns: repeat(4, 1fr); }
+  }
+
+  .stat{
+    border:1px solid var(--paper-line);
+    padding:12px 8px;
+    text-align:center;
+    background:var(--paper);
+  }
+  .stat .val{
+    font-family:'Georgia', serif;
+    font-size:1.3rem;
+    font-weight:bold;
+    color:var(--ink);
+  }
+  .stat .lab{
+    font-size:0.65rem;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin-top:4px;
+  }
+
+  .stamp-wrap{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    margin:18px 0 6px;
+  }
+
+  .stamp{
+    border:4px solid var(--pass);
+    color:var(--pass);
+    font-family:'Georgia', serif;
+    font-weight:bold;
+    font-size:1.6rem;
+    letter-spacing:0.18em;
+    text-transform:uppercase;
+    padding:10px 28px;
+    border-radius:6px;
+    transform: rotate(-6deg);
+    transition: transform 0.4s ease, opacity 0.4s ease;
+    opacity:0;
+  }
+  .stamp.fail{
+    border-color:var(--fail);
+    color:var(--fail);
+  }
+  .stamp.animate{
+    opacity:1;
+    animation: stamp-in 0.45s ease forwards;
+  }
+  @keyframes stamp-in{
+    0%{ transform: rotate(-6deg) scale(1.6); opacity:0; }
+    60%{ transform: rotate(-6deg) scale(0.95); opacity:1; }
+    100%{ transform: rotate(-6deg) scale(1); opacity:1; }
+  }
+
+  .remark{
+    text-align:center;
+    font-size:0.85rem;
+    color:var(--ink-soft);
+    margin-top:6px;
+    font-style:italic;
+  }
+
+  footer{
+    text-align:center;
+    font-size:0.7rem;
+    color:var(--ink-soft);
+    letter-spacing:0.15em;
+    text-transform:uppercase;
+    padding:14px 0 22px;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .stamp, .stamp.animate{ animation:none; transition:none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="sheet">
+  <header>
+    <p class="eyebrow">Academic Record</p>
+    <h1>Result Calculator</h1>
+    <p class="sub">Enter marks out of 100 for each subject</p>
+  </header>
+
+  <form id="marksForm" novalidate>
+    <div class="row">
+      <span class="no">1</span>
+      <label for="s1">Mathematics</label>
+      <input type="number" id="s1" min="0" max="100" placeholder="0–100" inputmode="numeric">
+    </div>
+    <div class="row">
+      <span class="no">2</span>
+      <label for="s2">Science</label>
+      <input type="number" id="s2" min="0" max="100" placeholder="0–100" inputmode="numeric">
+    </div>
+    <div class="row">
+      <span class="no">3</span>
+      <label for="s3">English</label>
+      <input type="number" id="s3" min="0" max="100" placeholder="0–100" inputmode="numeric">
+    </div>
+    <div class="row">
+      <span class="no">4</span>
+      <label for="s4">Social Studies</label>
+      <input type="number" id="s4" min="0" max="100" placeholder="0–100" inputmode="numeric">
+    </div>
+    <div class="row">
+      <span class="no">5</span>
+      <label for="s5">Computer Science</label>
+      <input type="number" id="s5" min="0" max="100" placeholder="0–100" inputmode="numeric">
+    </div>
+
+    <p class="error-msg" id="errorMsg"></p>
+
+    <div class="actions">
+      <button type="submit">Calculate Result</button>
+    </div>
+  </form>
+
+  <section id="result" aria-live="polite">
+    <div class="summary-grid">
+      <div class="stat">
+        <div class="val" id="totalVal">0</div>
+        <div class="lab">Total / 500</div>
+      </div>
+      <div class="stat">
+        <div class="val" id="percentVal">0%</div>
+        <div class="lab">Percentage</div>
+      </div>
+      <div class="stat">
+        <div class="val" id="gradeVal">-</div>
+        <div class="lab">Grade</div>
+      </div>
+      <div class="stat">
+        <div class="val" id="avgVal">0</div>
+        <div class="lab">Average</div>
+      </div>
+    </div>
+
+    <div class="stamp-wrap">
+      <div class="stamp" id="statusStamp">—</div>
+    </div>
+    <p class="remark" id="remark"></p>
+  </section>
+
+  <footer>Issued for evaluation purposes only</footer>
+</div>
+
+<script>
+  const form = document.getElementById('marksForm');
+  const errorMsg = document.getElementById('errorMsg');
+  const result = document.getElementById('result');
+  const stamp = document.getElementById('statusStamp');
+
+  const inputs = [1,2,3,4,5].map(n => document.getElementById('s' + n));
+
+  function gradeFor(percent){
+    if(percent >= 90) return 'A+';
+    if(percent >= 80) return 'A';
+    if(percent >= 70) return 'B';
+    if(percent >= 60) return 'C';
+    if(percent >= 50) return 'D';
+    if(percent >= 33) return 'E';
+    return 'F';
+  }
+
+  function remarkFor(percent, pass){
+    if(!pass) return 'Below the minimum passing requirement.';
+    if(percent >= 90) return 'Outstanding performance across all subjects.';
+    if(percent >= 75) return 'Excellent work — keep it up.';
+    if(percent >= 60) return 'Good performance with room to grow.';
+    return 'Satisfactory — focus on weaker subjects next term.';
+  }
+
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+
+    errorMsg.textContent = '';
+    inputs.forEach(i => i.classList.remove('invalid'));
+
+    const marks = [];
+    for(const input of inputs){
+      const raw = input.value.trim();
+      const num = Number(raw);
+
+      if(raw === '' || isNaN(num) || num < 0 || num > 100){
+        input.classList.add('invalid');
+        errorMsg.textContent = 'Please enter valid marks between 0 and 100 for every subject.';
+      } else {
+        marks.push(num);
+      }
+    }
+
+    if(marks.length !== 5){
+      result.classList.remove('show');
+      return;
+    }
+
+    const total = marks.reduce((a,b) => a+b, 0);
+    const percent = total / marks.length;
+    const grade = gradeFor(percent);
+    const pass = marks.every(m => m >= 33);
+
+    document.getElementById('totalVal').textContent = total + ' / 500';
+    document.getElementById('percentVal').textContent = percent.toFixed(2) + '%';
+    document.getElementById('gradeVal').textContent = grade;
+    document.getElementById('avgVal').textContent = percent.toFixed(1);
+
+    stamp.textContent = pass ? 'Pass' : 'Fail';
+    stamp.classList.toggle('fail', !pass);
+    stamp.classList.remove('animate');
+    // restart animation
+    void stamp.offsetWidth;
+    stamp.classList.add('animate');
+
+    document.getElementById('remark').textContent = remarkFor(percent, pass);
+
+    result.classList.add('show');
+  });
+</script>
+
+</body>
+</html>
